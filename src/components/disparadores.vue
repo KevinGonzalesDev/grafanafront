@@ -5,7 +5,7 @@
         </v-progress-circular>
         <v-row>
             <v-col cols="12" class="d-flex justify-center mt-10">
-                <h2>Formulario de Disparadores LLE1001</h2>
+                <h2>Formulario de Disparadores</h2>
             </v-col>
 
             <v-col cols="12" class="d-flex justify-end">
@@ -24,14 +24,14 @@
                                 </v-col>
                                 <v-col cols="12" md="4">
                                     <v-autocomplete v-model="nuevoDisparador.linea" label="Linea"
-                                        :items="['LINEA 1', 'LINEA 2', 'LINEA 6', 'LINEA 10']"
+                                        :items="['Linea 1', 'Linea 2', 'Linea 6', 'Linea 10']"
                                         :update:modelValue="searchMaquina(nuevoDisparador.linea)"></v-autocomplete>
                                 </v-col>
                                 <v-col cols="12" md="4">
 
-                                    <v-autocomplete v-model="nuevoDisparador.maquina" label="Maquina"
+                                    <v-autocomplete v-model="nuevoDisparador.machine" label="Maquina"
                                         :items="maquinaData" :disabled="maquinaDisabled" item-title="name"
-                                        item-value="id"></v-autocomplete>
+                                        item-value="name"></v-autocomplete>
                                 </v-col>
                                 <v-col cols="12" md="4">
                                     <v-text-field v-model="nuevoDisparador.code" label="codigo" type="number">
@@ -125,7 +125,6 @@ export default {
                         }
                     }
                 );
-                console.log(response, 'Respuesta del serividor');
 
                 if (response.ok) {
                     try {
@@ -267,7 +266,6 @@ export default {
                     },
                     body: JSON.stringify(disparadorAEnviar), // Enviar solo el nuevo objeto
                 }); // Enviar el objeto completo
-                console.log(response, 'respuesta del server');
 
 
                 if (response.ok) {

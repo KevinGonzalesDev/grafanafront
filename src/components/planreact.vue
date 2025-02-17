@@ -20,14 +20,14 @@
                     </v-text-field>
                   </v-col>
                   <v-col cols="12" md="4">
-                    <v-combobox v-model="nuevoplan.linea" label="Linea"
+                    <v-combobox v-model="selectedLinea" label="Linea"
                       :items="['Linea 1', 'Linea 2', 'Linea 6', 'Linea 10']"
-                      :v-on:change="fetchDataFilter(nuevoplan.linea)"></v-combobox>
+                      :update:modelValue="fetchDataFilter(selectedLinea)"></v-combobox>
                   </v-col>
                   <v-col cols="12" md="8">
-                    <v-autocomplete :disabled="dislistDisabled" v-model="nuevoplan.code" :items="distlistFilter"
-                      color="blue-grey-lighten-2" item-title="name" item-value="code" label="Disparador relacionado"
-                      chip>
+                    <v-autocomplete :disabled="dislistDisabled" v-model="nuevoplan.disparador" :items="distlistFilter"
+                      color="blue-grey-lighten-2" item-title="name" item-value="code" return-object
+                      label="Disparador relacionado" chip>
                       <template v-slot:item="{ props, item }">
                         <v-list-item v-bind="props" :title="item.raw.name">
                           <template v-slot:prepend>
@@ -66,7 +66,6 @@
     </v-row>
 
     <v-row dense>
-
       <v-col cols="12" md="6" v-for="item in Distlistplan" :key="item.id">
         <v-card outlined>
           <template v-slot:title>
@@ -74,22 +73,53 @@
               <a class="text-subtitle-1">{{ item.name }}</a>
               <v-spacer />
               <v-chip label class="mr-2" color="secondary">
-                {{ item.linea }}
+                {{ item.disparador.linea }}
+              </v-chip>
+              <v-chip label color="primary" class="mr-2">
+                <v-icon start icon="mdi-alarm-light" />
+                {{ item.disparador.code }}
               </v-chip>
               <v-chip label color="primary">
                 <v-icon start icon="mdi-alarm-light" />
-                {{ item.code }}
+                {{ item.disparador.machine }}
               </v-chip>
+              <v-btn v-if="editStatus[item.id]" @click="SaveEditplan(item)" color="primary">
+                <v-icon icon="mdi-content-save"></v-icon>
+              </v-btn>
+              <v-btn @click="toggleEdit(item.id)" :color="editStatus[item.id] ? 'red' : 'success'">
+                <v-icon :icon="editStatus[item.id] ? 'mdi-close' : 'mdi-pencil'"></v-icon>
+              </v-btn>
+
             </v-card-title>
           </template>
           <v-card-text>
-            <v-list density="compact" lines="one">
-              <v-list-item v-for="(plan, i) in item.plan" :key="i">
-                <v-list-item-title class="text-caption text-wrap">
-                  {{ plan }}
-                </v-list-item-title>
-              </v-list-item>
-            </v-list>
+            <template v-if="!editStatus[item.id]">
+              <v-list density="compact" lines="one">
+                <v-list-item v-for="(plan, i) in item.plan" :key="i">
+                  <v-list-item-title class="text-caption text-wrap">
+                    {{ plan }}
+                  </v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </template>
+            <template v-else>
+              <v-row dense>
+                <v-col cols="12" class="d-flex justify-end">
+                  <v-btn color="green" @click="addPlan(item)">
+                    <v-icon icon="mdi-plus"></v-icon>
+                  </v-btn>
+                </v-col>
+                <v-col cols="12" v-for="(plan, i ) in item.plan" :key="i">
+                  <v-text-field v-model="item.plan[i]" label="Plan">
+                    <template v-slot:append>
+                      <v-btn variant="plain" icon="mdi-delete" size="xsmall" color="red"
+                        @click="removePlan(item, i)"></v-btn>
+                    </template>
+                  </v-text-field>
+
+                </v-col>
+              </v-row>
+            </template>
           </v-card-text>
         </v-card>
       </v-col>
@@ -98,7 +128,7 @@
   </div>
 </template>
 <script>
-import { ref } from "vue";
+import { ref, reactive } from "vue";
 
 export default {
 
@@ -106,8 +136,10 @@ export default {
     const showModal = ref(false);
     const loading = ref(false);
     const statusMessage = ref("");
+    const editStatus = reactive({})
 
     const disList = ref([])
+    const selectedLinea = ref([])
     const dislistDisabled = ref(true);
     const distlistFilter = ref([])
 
@@ -116,8 +148,7 @@ export default {
     const disparadoresArray = ref([]);
     const nuevoplan = ref({
       id: null,
-      linea: "",
-      code: null,
+      disparador: null,
       name: "",
       plan: [],
     });
@@ -134,12 +165,12 @@ export default {
 
     const fetchDataFilter = async (selectedLinea) => {
       try {
+
         dislistDisabled.value = false;
         distlistFilter.value = disList.value.filter((item) => {
           return item.linea === selectedLinea; // Comparar campo "linea" con el valor seleccionado
         });
 
-        console.log("Datos filtrados:", distlistFilter.value);
       } catch (error) {
         console.error("Error al filtrar los datos:", error);
       }
@@ -233,14 +264,13 @@ export default {
       const nuevoId = Date.now();
       const disparadorAEnviar = {
         id: nuevoId,
-        linea: nuevoplan.value.linea,
-        code: parseInt(nuevoplan.value.code),
+        disparador: nuevoplan.value.disparador,
         name: nuevoplan.value.name,
-        plan: disparadoresArray.value,
+        plan: [...disparadoresArray.value],
       };
 
       try {
-        if (!nuevoplan.value.linea || !nuevoplan.value.code || !nuevoplan.value.name || !nuevoplan.value.plan) {
+        if (!nuevoplan.value.disparador || !nuevoplan.value.name || !nuevoplan.value.plan) {
           alert("Todos los campos son obligatorios.");
           return;
         }
@@ -256,14 +286,13 @@ export default {
           },
           body: JSON.stringify(disparadorAEnviar), // Enviar solo el nuevo objeto
         }); // Enviar el objeto completo
-        console.log(response, 'respuesta del server');
 
 
         if (response.ok) {
           alert("Disparador agregado correctamente.");
           showModal.value = false;
           nuevoplan.value = {
-            id: null, code: null, linea: null, plan: [], name: ""
+            id: null, disparador: [], plan: [], name: ""
           }; // Limpiar formulario
         } else {
           const errorText = await response.text();
@@ -277,6 +306,59 @@ export default {
       }
     };
 
+    const SaveEditplan = async (item) => {
+
+
+
+
+
+      try {
+        if (!nuevoplan.value.plan) {
+          alert("Todos los campos son obligatorios.");
+          return;
+        }
+        const username = "admin";
+        const password = "751156";
+        const credentials = btoa(`${username}:${password}`);
+
+        const response = await fetch("http://localhost:4002/api/v1/LINEA/plansic/submit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Basic ${credentials}`,
+          },
+          body: JSON.stringify(item), // Enviar solo el nuevo objeto
+        }); // Enviar el objeto completo
+
+
+        if (response.ok) {
+          alert("Disparador agregado correctamente.");
+          editStatus[item.id] = false;
+        } else {
+          const errorText = await response.text();
+          throw new Error(`Error al agregar el disparador: ${response.status} - ${errorText}`);
+        }
+      } catch (error) {
+        console.error("Error al agregar disparador:", error);
+        alert("Error al conectar con el servidor.");
+      } finally {
+        fetchplanData()
+      }
+
+    }
+
+    const addPlan = (item) => {
+      item.plan.push("Nuevo Plan");
+    };
+
+    const removePlan = (item, index) => {
+      item.plan.splice(index, 1);
+    };
+    const toggleEdit = (id) => {
+      editStatus[id] = !editStatus[id];
+    };
+
+
 
     return {
       statusMessage,
@@ -285,11 +367,18 @@ export default {
       fetchplanData,
       fetchData,
       Distlistplan,
+      distlistFilter,
       showModal,
       nuevoplan,
       fetchDataFilter,
+      SaveEditplan,
+      editStatus,
       dislistDisabled,
+      selectedLinea,
       disList,
+      addPlan,
+      removePlan,
+      toggleEdit,
       agregarDisparador, eliminarDisparador, disparadoresArray,
       sendDatapush
     };
