@@ -109,7 +109,7 @@
                     <v-icon icon="mdi-plus"></v-icon>
                   </v-btn>
                 </v-col>
-                <v-col cols="12" v-for="(plan, i ) in item.plan" :key="i">
+                <v-col cols="12" v-for="(plan, i) in item.plan" :key="i">
                   <v-text-field v-model="item.plan[i]" label="Plan">
                     <template v-slot:append>
                       <v-btn variant="plain" icon="mdi-delete" size="xsmall" color="red"
